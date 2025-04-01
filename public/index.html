@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolbar Example</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+        }
+        .toolbar {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        .toolbar ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .toolbar li {
+            display: inline-block;
+            position: relative;
+        }
+        .toolbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            display: block;
+        }
+        .toolbar li:hover > .dropdown-content {
+            display: block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #444;
+            min-width: 160px;
+            z-index: 1;
+        }
+        .dropdown-content a {
+            padding: 10px;
+        }
+        .dropdown-content a:hover {
+            background-color: #555;
+        }
+        .nested-dropdown {
+            position: absolute;
+            left: 100%;
+            top: 0;
+            display: none;
+            background-color: #555;
+        }
+        .nested-dropdown a {
+            padding: 10px;
+            white-space: nowrap;
+        }
+        .dropdown-content .nested-menu:hover .nested-dropdown {
+            display: block;
+        }
+        .location-panel {
+            width: 250px;
+            padding: 20px;
+            background-color: #f4f4f4;
+            border-left: 1px solid #ccc;
+            position: fixed;
+            right: 0;
+            top: 50px;
+            height: calc(100vh - 50px);
+            overflow-y: auto;
+        }
+        .location-panel label, .location-panel select, .location-panel div {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .location-panel select {
+            width: 100%;
+            padding: 5px;
+        }
+        .location-panel input[type="date"] {
+            width: 100%;
+            padding: 5px;
+        }
+        #calendar {
+            margin-bottom: 20px;
+        }
+        .main-panel {
+    margin: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .main-panel {
+        padding-top: 100px;
+    }
+
+    .main-panel table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+    }
+
+    .main-panel th, .main-panel td {
+        padding: 10px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+
+    .main-panel th {
+        background-color: #333;
+        color: white;
+    }
+
+    .main-panel tbody tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    .main-panel tbody tr:hover {
+        background-color: #ddd;
+    }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <ul>
+            <li>
+                <a href="#">File</a>
+                <div class="dropdown-content">
+                    <a href="#" onclick="onSelect('File', 'New')">New</a>
+                    <div class="dropdown-content nested-menu">
+                        <a href="#">Завантажити</a>
+                        <div class="nested-dropdown">
+                            <a href="#">Option 1</a>
+                            <a href="#">Option 2</a>
+                            <a href="#">Option 3</a>
+                        </div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <a href="#">View</a>
+                <div class="dropdown-content">
+                    <a href="#" onclick="onSelect('View', 'Zoom In')">Zoom In</a>
+                    <a href="#" onclick="onSelect('View', 'Zoom Out')">Zoom Out</a>
+                    <a href="#" onclick="onSelect('View', 'Fullscreen')">Fullscreen</a>
+                </div>
+            </li>
+            <li>
+                <a href="#">Forecast</a>
+                <div class="dropdown-content">
+                    <a href="#" onclick="onSelect('Forecast', 'Daily')">Daily</a>
+                    <a href="#" onclick="onSelect('Forecast', 'Weekly')">Weekly</a>
+                    <a href="#" onclick="onSelect('Forecast', 'Monthly')">Monthly</a>
+                </div>
+            </li>
+            <li>
+                <a href="#">Help</a>
+                <div class="dropdown-content">
+                    <a href="#" onclick="onSelect('Help', 'Documentation')">Documentation</a>
+                    <a href="#" onclick="onSelect('Help', 'Support')">Support</a>
+                    <a href="#" onclick="onSelect('Help', 'About')">About</a>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <div class="location-panel">
+        <label>Location</label>
+        <select id="citySelect" onchange="onCitySelected()">
+            <option disabled selected>Select City</option>
+            <option>Lviv</option>
+        </select>
+        <input type="date" id="calendar">
+        <label>City Coordinates:</label>
+        <label>Latitude</label>
+        <div id="latitude">-</div>
+        <label>Longitude</label>
+        <div id="longitude">-</div>
+        
+        <label>Date and Time:</label>
+        <div id="datetime">-</div>
+        
+        <label>Temperature:</label>
+        <div id="temperature">-</div>
+        
+        <label>Wind:</label>
+        <div id="wind">-</div>
+
+        <label>Pressure:</label>
+        <div id="pressure">-</div>
+        
+        <label>Humidity:</label>
+        <div id="humidity">-</div>
+    </div>
+
+    <div class = "main-panel">
+        <table id="weatherTable" border="1">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Temperature</th>
+                    <th>Wind</th>
+                    <th>Pressure</th>
+                    <th>Humidity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Weather data will be inserted here dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function toggleMenu(menuId) {
+            const menu = document.getElementById(menuId);
+            const activeButton = document.querySelector('.toolbar button.active');
+            if (activeButton && activeButton !== event.target) {
+                activeButton.classList.remove('active');
+                activeButton.nextElementSibling.style.display = 'none';
+            }
+            if (menu.style.display === 'block') {
+                menu.style.display = 'none';
+                event.target.classList.remove('active');
+            } else {
+                menu.style.display = 'block';
+                event.target.classList.add('active');
+            }
+        }
+
+        function onSelect(menu, option) {
+            alert(menu + ' - ' + option + ' selected!');
+        }
+
+        function onCitySelected() {
+            fetch('/lastData')
+            .then(response => {
+                if (!response.ok) {
+                throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('latitude').textContent = data.latitude || '-';
+                document.getElementById('longitude').textContent = data.longitude || '-';
+                document.getElementById('temperature').textContent = data.temperature || '-';
+                document.getElementById('wind').textContent = data.wind || '-';
+                document.getElementById('pressure').textContent = data.pressure || '-';
+                document.getElementById('humidity').textContent = data.humidity || '-';
+                document.getElementById('datetime').textContent = data.time || '-';
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+
+            fetch('/data')
+            .then(response => {
+                if (!response.ok) {
+                throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateWeatherTable(data)
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+
+        }   
+        function updateWeatherTable(data) {
+            const tableBody = document.getElementById('weatherTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = "";
+
+            data.forEach(entry => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${entry.time || '-'}</td>
+                    <td>${entry.temperature || '-'}</td>
+                    <td>${entry.wind || '-'}</td>
+                    <td>${entry.pressure || '-'}</td>
+                    <td>${entry.humidity || '-'}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }   
+    </script>
+</body>
+</html>
