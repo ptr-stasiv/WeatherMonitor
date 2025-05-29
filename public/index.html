@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toolbar Example</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <style>
         body {
             margin: 0;
@@ -20,6 +22,8 @@
             position: fixed;
             top: 0;
             left: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .toolbar ul {
             list-style-type: none;
@@ -76,6 +80,7 @@
             top: 50px;
             height: calc(100vh - 50px);
             overflow-y: auto;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
         }
         .location-panel label, .location-panel select, .location-panel div {
             display: block;
@@ -93,234 +98,234 @@
             margin-bottom: 20px;
         }
         .main-panel {
-    margin: 20px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .main-panel {
-        padding-top: 100px;
-    }
-
-    .main-panel table {
-        width: 100%;
-        border-collapse: collapse;
-        background-color: white;
-    }
-
-    .main-panel th, .main-panel td {
-        padding: 10px;
-        text-align: left;
-        border: 1px solid #ddd;
-    }
-
-    .main-panel th {
-        background-color: #333;
-        color: white;
-    }
-
-    .main-panel tbody tr:nth-child(even) {
-        background-color: #f2f2f2;
-    }
-
-    .main-panel tbody tr:hover {
-        background-color: #ddd;
-    }
-
-    /* Modal styles */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        overflow-y: auto;
-    }
-
-    .modal-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 80%;
-        max-width: 500px;
-        border-radius: 5px;
-        max-height: 90vh;
-        overflow-y: auto;
-        position: relative;
-    }
-
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        position: sticky;
-        top: 0;
-        background-color: #fefefe;
-        padding: 10px 0;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-        position: sticky;
-        top: 10px;
-    }
-
-    .close:hover {
-        color: black;
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-        padding: 0 10px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 8px;
-        font-weight: bold;
-    }
-
-    .form-group input {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 14px;
-    }
-
-    .form-group input:focus {
-        border-color: #333;
-        outline: none;
-        box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-
-    .form-group button {
-        background-color: #333;
-        color: white;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
-        font-size: 16px;
-        margin-top: 20px;
-    }
-
-    .form-group button:hover {
-        background-color: #444;
-    }
-
-    /* Make the submit button sticky at the bottom */
-    form > .form-group:last-child {
-        position: sticky;
-        bottom: 0;
-        background-color: #fefefe;
-        padding: 20px 10px;
-        margin-bottom: 0;
-        border-top: 1px solid #ddd;
-    }
-
-    /* Filter Modal Styles */
-    .filter-modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.5);
-        overflow-y: auto;
-    }
-
-    .filter-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 90%;
-        max-width: 800px;
-        border-radius: 5px;
-    }
-
-    .filter-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 10px;
-    }
-
-    .filter-options {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-
-    .filter-options label {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-
-    .date-range {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-
-    .filter-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
-
-    .filter-table th {
-        background-color: #333;
-        color: white;
-        padding: 10px;
-        text-align: left;
-    }
-
-    .filter-table td {
-        padding: 10px;
-        border: 1px solid #ddd;
-    }
-
-    .filter-buttons {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .filter-buttons button {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .apply-filters {
-        background-color: #333;
-        color: white;
-    }
-
-    .reset-filters {
-        background-color: #ddd;
-    }
+            margin-top: 60px;
+            margin-right: 270px;
+            margin-left: 20px;
+            padding: 20px;
+            flex-grow: 1;
+        }
+        #chartContainer {
+            width: 100%;
+            max-width: 1000px;
+            margin: 20px 0;
+        }
+        .main-panel table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .main-panel th, .main-panel td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .main-panel th {
+            background-color: #333;
+            color: white;
+            font-weight: bold;
+        }
+        .main-panel tbody tr:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+        .main-panel tbody tr:hover {
+            background-color: #f0f0f0;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 5px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            background-color: #fefefe;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: sticky;
+            top: 10px;
+        }
+        .close:hover {
+            color: black;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            border-color: #333;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .form-group button {
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+        .form-group button:hover {
+            background-color: #444;
+        }
+        /* Make the submit button sticky at the bottom */
+        form > .form-group:last-child {
+            position: sticky;
+            bottom: 0;
+            background-color: #fefefe;
+            padding: 20px 10px;
+            margin-bottom: 0;
+            border-top: 1px solid #ddd;
+        }
+        /* Filter Modal Styles */
+        .filter-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        .filter-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 5px;
+        }
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .filter-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .filter-options label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .date-range {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .filter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .filter-table th {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: left;
+        }
+        .filter-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .filter-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .filter-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .apply-filters {
+            background-color: #333;
+            color: white;
+        }
+        .reset-filters {
+            background-color: #ddd;
+        }
+        .chart-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        .chart-modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 1200px;
+            border-radius: 5px;
+            position: relative;
+        }
+        .chart-container {
+            width: 100%;
+            height: 70vh;
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -403,7 +408,7 @@
         <div id="gaz">-</div>
     </div>
 
-    <div class = "main-panel">
+    <div class="main-panel">
         <table id="weatherTable" border="1">
             <thead>
                 <tr>
@@ -490,7 +495,21 @@
         </div>
     </div>
 
+    <div id="chartModal" class="chart-modal">
+        <div class="chart-modal-content">
+            <div class="modal-header">
+                <h2>Weather Forecast</h2>
+                <span class="close" onclick="closeChartModal()">&times;</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let forecastChart = null;
+
         function toggleMenu(menuId) {
             const menu = document.getElementById(menuId);
             const activeButton = document.querySelector('.toolbar button.active');
@@ -507,13 +526,17 @@
             }
         }
 
-        function onSelect(menu, option) {
-            if (menu === 'File' && option === 'Edit') {
+        function onSelect(menu, item) {
+            if (menu === 'File' && item === 'Edit') {
                 modal.style.display = "block";
-            } else if (menu === 'View' && option === 'Filters') {
+            } else if (menu === 'View' && item === 'Filters') {
                 openFilterModal();
+            } else if (menu === 'Forecast' && item === 'Smoothing Method') {
+                showForecastModal('smoothing');
+            } else if (menu === 'Forecast' && item === 'Kalman Filter') {
+                showForecastModal('kalman');
             } else {
-                alert(menu + ' - ' + option + ' selected!');
+                alert(menu + ' - ' + item + ' selected!');
             }
         }
 
@@ -583,8 +606,12 @@
         }
 
         window.onclick = function(event) {
-            if (event.target == modal) {
-                modal.style.display = "none";
+            const editModal = document.getElementById("editModal");
+            const chartModal = document.getElementById("chartModal");
+            if (event.target == editModal) {
+                editModal.style.display = "none";
+            } else if (event.target == chartModal) {
+                closeChartModal();
             }
         }
 
@@ -793,6 +820,201 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        function showForecastModal(method) {
+            const modal = document.getElementById('editModal');
+            const modalContent = modal.querySelector('.modal-content');
+            
+            modalContent.innerHTML = `
+                <div class="modal-header">
+                    <h2>Forecast Settings (${method === 'kalman' ? 'Kalman Filter' : 'Smoothing Method'})</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="form-group">
+                    <label for="dataType">Data Type:</label>
+                    <select id="dataType">
+                        <option value="temperature_air">Temperature Air</option>
+                        <option value="temperature_ground">Temperature Ground</option>
+                        <option value="wind">Wind</option>
+                        <option value="pressure">Pressure</option>
+                        <option value="humidity">Humidity</option>
+                        <option value="gaz">Gas Level</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="forecastDays">Days to Forecast:</label>
+                    <input type="number" id="forecastDays" value="7" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <button onclick="generateForecast('${method}')">Generate Forecast</button>
+                </div>
+            `;
+
+            modal.style.display = "block";
+
+            const span = modal.querySelector('.close');
+            span.onclick = function() {
+                modal.style.display = "none";
+            }
+        }
+
+        function generateForecast(method) {
+            const dataType = document.getElementById('dataType').value;
+            const days = parseInt(document.getElementById('forecastDays').value);
+
+            // Close the modal
+            document.getElementById('editModal').style.display = "none";
+
+            // Make the forecast request
+            fetch(`/forecast/${method}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    dataType,
+                    days
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                displayForecastChart(data, dataType, method);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating forecast: ' + error.message);
+            });
+        }
+
+        function displayForecastChart(data, dataType, method) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+            
+            // Show the chart modal
+            document.getElementById('chartModal').style.display = "block";
+            
+            // Destroy existing chart if it exists
+            if (forecastChart) {
+                forecastChart.destroy();
+            }
+
+            // Get proper label for the y-axis
+            const yAxisLabel = {
+                'temperature_air': 'Temperature (°C)',
+                'temperature_ground': 'Ground Temperature (°C)',
+                'wind': 'Wind Speed (m/s)',
+                'pressure': 'Pressure (hPa)',
+                'humidity': 'Humidity (%)',
+                'gaz': 'Gas Level (ppm)'
+            }[dataType];
+
+            // Process and validate the data
+            console.log('Processing historical data:', data.historical.length, 'points');
+            console.log('Processing forecast data:', data.forecast.length, 'points');
+
+            // Convert string dates to Date objects and ensure proper formatting
+            const historicalData = data.historical.map(d => {
+                const date = new Date(d.time.replace(' ', 'T'));
+                return {
+                    x: date,
+                    y: parseFloat(d.value)
+                };
+            });
+
+            const forecastData = data.forecast.map(d => {
+                const date = new Date(d.time.replace(' ', 'T'));
+                return {
+                    x: date,
+                    y: parseFloat(d.value)
+                };
+            });
+
+            // Create the chart
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: method === 'kalman' ? 'Historical Data' : 'Historical Data',
+                            data: historicalData,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2
+                        },
+                        {
+                            label: `${method === 'kalman' ? 'Kalman' : 'Smoothing'} Forecast`,
+                            data: forecastData,
+                            borderColor: 'rgb(255, 99, 132)',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, HH:mm'
+                                },
+                                tooltipFormat: 'MMM d, yyyy HH:mm'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: yAxisLabel
+                            },
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${yAxisLabel} Forecast (${method === 'kalman' ? 'Kalman Filter' : 'Smoothing Method'})`
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return new Date(context[0].parsed.x).toLocaleString();
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function closeChartModal() {
+            document.getElementById('chartModal').style.display = "none";
+            if (forecastChart) {
+                forecastChart.destroy();
+                forecastChart = null;
+            }
         }
     </script>
 </body>
