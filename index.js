@@ -9,6 +9,9 @@ const PORT = 3000;
 // Add JSON body parsing middleware
 app.use(express.json());
 
+// Add middleware to parse URL-encoded bodies (as sent by HTML forms)
+app.use(express.urlencoded({ extended: true }));
+
 const API_KEY = '3cd323f0dc2bba188fdc43f1b16365ff';
 const CITY = 'London';
 const UNIT = 'metric';
@@ -557,6 +560,23 @@ app.post('/forecast/kalman', (req, res) => {
       console.error('Error processing forecast:', error);
       res.status(500).json({ error: 'Error processing forecast: ' + error.message });
     }
+  });
+});
+
+app.post('/receiveData', (req, res) => {
+  console.log('Data received at:', new Date().toISOString());
+  
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Raw request body:', req.body);
+  
+  const data = req.body;
+  console.log('Processed data:', JSON.stringify(data, null, 2));
+  
+  res.json({
+    status: 'success',
+    message: 'Data received successfully',
+    timestamp: new Date().toISOString(),
+    receivedData: data
   });
 });
 
