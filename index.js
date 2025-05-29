@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const API_KEY = '3cd323f0dc2bba188fdc43f1b16365ff';
-const CITY = 'London';
+const CITY = 'Lviv';
 const UNIT = 'metric';
 
 const connection = mysql.createConnection({
