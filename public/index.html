@@ -326,6 +326,48 @@
             height: 70vh;
             position: relative;
         }
+
+        #graphsModal .modal-content {
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            margin: 2% auto;
+        }
+
+        #graphsModal .chart-container {
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #graphsModal .graph-controls {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        #graphsModal .graph-controls .form-group {
+            flex: 1;
+        }
+
+        #graphsModal .graph-controls label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        #graphsModal .graph-controls select,
+        #graphsModal .graph-controls input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -353,6 +395,7 @@
                 <a href="#">View</a>
                 <div class="dropdown-content">
                     <a href="#" onclick="onSelect('View', 'Filters')">Filters</a>
+                    <a href="#" onclick="onSelect('View', 'Graphs')">Graphs</a>
                 </div>
             </li>
             <li>
@@ -505,6 +548,39 @@
         </div>
     </div>
 
+    <div id="graphsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Weather Graphs</h2>
+                <span class="close" onclick="closeGraphsModal()">&times;</span>
+            </div>
+            <div class="graph-controls">
+                <div class="form-group">
+                    <label for="graphDataType">Data Type:</label>
+                    <select id="graphDataType" onchange="updateGraph()">
+                        <option value="temperature_air">Temperature Air</option>
+                        <option value="temperature_ground">Temperature Ground</option>
+                        <option value="wind">Wind Speed</option>
+                        <option value="pressure">Pressure</option>
+                        <option value="humidity">Humidity</option>
+                        <option value="gaz">Gas Level</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="graphStartDate">Start Date:</label>
+                    <input type="date" id="graphStartDate" onchange="updateGraph()">
+                </div>
+                <div class="form-group">
+                    <label for="graphEndDate">End Date:</label>
+                    <input type="date" id="graphEndDate" onchange="updateGraph()">
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="weatherGraph"></canvas>
+            </div>
+        </div>
+    </div>
+
     <div id="aboutModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -530,6 +606,7 @@
 
     <script>
         let forecastChart = null;
+        let weatherGraph = null;
 
         function toggleMenu(menuId) {
             const menu = document.getElementById(menuId);
@@ -552,6 +629,8 @@
                 modal.style.display = "block";
             } else if (menu === 'View' && item === 'Filters') {
                 openFilterModal();
+            } else if (menu === 'View' && item === 'Graphs') {
+                openGraphsModal();
             } else if (menu === 'Forecast' && item === 'Smoothing Method') {
                 showForecastModal('smoothing');
             } else if (menu === 'Forecast' && item === 'Kalman Filter') {
@@ -632,12 +711,15 @@
             const editModal = document.getElementById("editModal");
             const chartModal = document.getElementById("chartModal");
             const aboutModal = document.getElementById("aboutModal");
+            const graphsModal = document.getElementById("graphsModal");
             if (event.target == editModal) {
                 editModal.style.display = "none";
             } else if (event.target == chartModal) {
                 closeChartModal();
             } else if (event.target == aboutModal) {
                 closeAboutModal();
+            } else if (event.target == graphsModal) {
+                closeGraphsModal();
             }
         }
 
@@ -1051,6 +1133,215 @@
         function closeAboutModal() {
             const aboutModal = document.getElementById('aboutModal');
             aboutModal.style.display = "none";
+        }
+
+        function openGraphsModal() {
+            const graphsModal = document.getElementById('graphsModal');
+            graphsModal.style.display = "block";
+            
+            // Set default dates (last 7 days)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7);
+            
+            document.getElementById('graphStartDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('graphEndDate').value = endDate.toISOString().split('T')[0];
+            
+            // Initialize the graph
+            updateGraph();
+        }
+
+        function closeGraphsModal() {
+            const graphsModal = document.getElementById('graphsModal');
+            graphsModal.style.display = "none";
+            
+            // Destroy the chart to free up resources
+            if (weatherGraph) {
+                weatherGraph.destroy();
+                weatherGraph = null;
+            }
+        }
+
+        function updateGraph() {
+            const dataType = document.getElementById('graphDataType').value;
+            const startDate = document.getElementById('graphStartDate').value;
+            const endDate = document.getElementById('graphEndDate').value;
+
+            // Validate date range
+            if (startDate && endDate) {
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('Start date must be before end date');
+                    return;
+                }
+            }
+
+            // Show loading state
+            const canvas = document.getElementById('weatherGraph');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('Loading data...', canvas.width / 2, canvas.height / 2);
+
+            // Fetch data from server with the selected parameters
+            fetch('/getData', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    dataType,
+                    startDate: startDate + ' 00:00:00',
+                    endDate: endDate + ' 23:59:59'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data || data.length === 0) {
+                    throw new Error('No data available for the selected period');
+                }
+                drawGraph(data, dataType, startDate, endDate);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillText(error.error || error.message || 'Error fetching data', canvas.width / 2, canvas.height / 2);
+                alert('Error: ' + (error.error || error.message || 'Failed to fetch data'));
+            });
+        }
+
+        function drawGraph(data, dataType, startDate, endDate) {
+            const ctx = document.getElementById('weatherGraph').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (weatherGraph) {
+                weatherGraph.destroy();
+            }
+
+            // Get proper label for the y-axis
+            const yAxisLabel = {
+                'temperature_air': 'Temperature (°C)',
+                'temperature_ground': 'Ground Temperature (°C)',
+                'wind': 'Wind Speed (m/s)',
+                'pressure': 'Pressure (hPa)',
+                'humidity': 'Humidity (%)',
+                'gaz': 'Gas Level (ppm)'
+            }[dataType];
+
+            try {
+                // Process the data - now handling the full record format
+                const chartData = data.map(record => {
+                    const value = parseFloat(record[dataType]);
+                    return {
+                        x: new Date(record.time.replace(' ', 'T')),
+                        y: isNaN(value) ? null : value
+                    };
+                }).filter(point => point.y !== null);
+
+                if (chartData.length === 0) {
+                    throw new Error('No valid data points available for the selected period');
+                }
+
+                // Calculate time unit based on date range
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                
+                let timeUnit;
+                if (daysDiff <= 2) {
+                    timeUnit = 'hour';
+                } else if (daysDiff <= 7) {
+                    timeUnit = 'day';
+                } else if (daysDiff <= 31) {
+                    timeUnit = 'week';
+                } else {
+                    timeUnit = 'month';
+                }
+
+                // Create the chart
+                weatherGraph = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: yAxisLabel,
+                            data: chartData,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: timeUnit,
+                                    displayFormats: {
+                                        hour: 'MMM d, HH:mm',
+                                        day: 'MMM d',
+                                        week: 'MMM d',
+                                        month: 'MMM yyyy'
+                                    },
+                                    tooltipFormat: 'MMM d, yyyy HH:mm'
+                                },
+                                min: start.toISOString(),
+                                max: end.toISOString(),
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: yAxisLabel
+                                },
+                                beginAtZero: false
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${yAxisLabel} Over Time (${start.toLocaleDateString()} - ${end.toLocaleDateString()})`
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(context) {
+                                        return new Date(context[0].parsed.x).toLocaleString();
+                                    },
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                console.log(`Displaying ${chartData.length} data points from ${start.toISOString()} to ${end.toISOString()}`);
+            } catch (error) {
+                console.error('Error creating chart:', error);
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#ff0000';
+                ctx.textAlign = 'center';
+                ctx.fillText('Error creating chart: ' + error.message, ctx.canvas.width / 2, ctx.canvas.height / 2);
+            }
         }
     </script>
 </body>

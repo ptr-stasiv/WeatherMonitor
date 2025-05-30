@@ -580,4 +580,57 @@ app.post('/receiveData', (req, res) => {
   });
 });
 
+app.post('/getData', (req, res) => {
+  const { dataType, startDate, endDate } = req.body;
+  console.log('Received request:', { dataType, startDate, endDate });
+
+  // Validate input parameters
+  if (!dataType) {
+    return res.status(400).json({ error: 'Data type is required' });
+  }
+
+  // List of valid data types
+  const validDataTypes = ['temperature_air', 'temperature_ground', 'wind', 'pressure', 'humidity', 'gaz'];
+  if (!validDataTypes.includes(dataType)) {
+    return res.status(400).json({ error: 'Invalid data type' });
+  }
+
+  // Build the query - fetch all columns like the filters endpoint
+  let query = 'SELECT time, temperature_air, temperature_ground, wind, pressure, humidity, gaz FROM data WHERE 1=1';
+  const queryParams = [];
+
+  if (startDate) {
+    query += ' AND time >= ?';
+    queryParams.push(startDate);
+  }
+  if (endDate) {
+    query += ' AND time <= ?';
+    queryParams.push(endDate);
+  }
+
+  // Order by time and limit to prevent overwhelming the client
+  query += ' ORDER BY time ASC';
+
+  console.log('Executing query:', query);
+  console.log('Query parameters:', queryParams);
+
+  // Execute the query
+  connection.query(query, queryParams, (err, results) => {
+    if (err) {
+      console.error('Error fetching graph data:', err);
+      res.status(500).json({ error: 'Database error: ' + err.message });
+      return;
+    }
+
+    try {
+      console.log(`Retrieved ${results.length} records`);
+      // Send the full results
+      res.json(results);
+    } catch (error) {
+      console.error('Error formatting results:', error);
+      res.status(500).json({ error: 'Error formatting data: ' + error.message });
+    }
+  });
+});
+
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
