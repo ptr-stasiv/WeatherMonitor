@@ -365,8 +365,6 @@
             <li>
                 <a href="#">Help</a>
                 <div class="dropdown-content">
-                    <a href="#" onclick="onSelect('Help', 'Documentation')">Documentation</a>
-                    <a href="#" onclick="onSelect('Help', 'Support')">Support</a>
                     <a href="#" onclick="onSelect('Help', 'About')">About</a>
                 </div>
             </li>
@@ -507,6 +505,29 @@
         </div>
     </div>
 
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>About Weather Monitor</h2>
+                <span class="close" onclick="closeAboutModal()">&times;</span>
+            </div>
+            <div>
+                <h3>Developer</h3>
+                <p>Developed by Petro Stasiv FEI-41</p>
+                
+                <h3>Description</h3>
+                <p>Weather Monitor is a comprehensive weather monitoring and forecasting application that provides real-time weather data analysis and visualization. The application features:</p>
+                <ul style="margin-left: 20px; line-height: 1.6;">
+                    <li>Real-time weather data monitoring</li>
+                    <li>Advanced data filtering and analysis</li>
+                    <li>Weather forecasting using Kalman Filter and Smoothing Method</li>
+                    <li>Data export capabilities</li>
+                    <li>Interactive charts and visualizations</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <script>
         let forecastChart = null;
 
@@ -535,6 +556,8 @@
                 showForecastModal('smoothing');
             } else if (menu === 'Forecast' && item === 'Kalman Filter') {
                 showForecastModal('kalman');
+            } else if (menu === 'Help' && item === 'About') {
+                openAboutModal();
             } else {
                 alert(menu + ' - ' + item + ' selected!');
             }
@@ -608,10 +631,13 @@
         window.onclick = function(event) {
             const editModal = document.getElementById("editModal");
             const chartModal = document.getElementById("chartModal");
+            const aboutModal = document.getElementById("aboutModal");
             if (event.target == editModal) {
                 editModal.style.display = "none";
             } else if (event.target == chartModal) {
                 closeChartModal();
+            } else if (event.target == aboutModal) {
+                closeAboutModal();
             }
         }
 
@@ -1015,6 +1041,16 @@
                 forecastChart.destroy();
                 forecastChart = null;
             }
+        }
+
+        function openAboutModal() {
+            const aboutModal = document.getElementById('aboutModal');
+            aboutModal.style.display = "block";
+        }
+
+        function closeAboutModal() {
+            const aboutModal = document.getElementById('aboutModal');
+            aboutModal.style.display = "none";
         }
     </script>
 </body>
