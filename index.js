@@ -59,7 +59,7 @@ const fetchWeatherData = async () => {
   }
 };
 
-setInterval(fetchWeatherData, 50000);
+setInterval(fetchWeatherData, 300000);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -314,10 +314,10 @@ app.get('/download/:type', (req, res) => {
 app.post('/forecast/smoothing', (req, res) => {
   console.log('Received forecast request:', req.body);
   
-  const { days = 7, dataType = 'temperature_air' } = req.body;
+  const { hours = 24, dataType = 'temperature_air' } = req.body;
   
-  if (!days || days < 1 || days > 30) {
-    return res.status(400).json({ error: 'Days must be between 1 and 30' });
+  if (!hours || hours < 1 || hours > 168) { // Max 7 days (168 hours)
+    return res.status(400).json({ error: 'Hours must be between 1 and 168' });
   }
 
   const validDataTypes = ['temperature_air', 'temperature_ground', 'wind', 'pressure', 'humidity', 'gaz'];
@@ -392,13 +392,14 @@ app.post('/forecast/smoothing', (req, res) => {
     const forecast = [];
     let lastValue = smoothedData[smoothedData.length - 1].value;
     let lastDate = new Date(smoothedData[smoothedData.length - 1].time);
-    const dampeningFactor = 0.95;
+    const dampeningFactor = 0.98; // Slightly higher dampening factor for hourly predictions
 
+    // Round to the nearest hour
     lastDate = new Date(lastDate);
-    lastDate.setDate(lastDate.getDate() + 1);
-    lastDate.setHours(0, 0, 0, 0); // Set to beginning of the day (00:00:00)
+    lastDate.setMinutes(0, 0, 0);
+    lastDate.setHours(lastDate.getHours() + 1);
 
-    for (let i = 0; i < days; i++) {
+    for (let i = 0; i < hours; i++) {
       const trend = averageChange * Math.pow(dampeningFactor, i);
       lastValue += trend;
       
@@ -408,7 +409,7 @@ app.post('/forecast/smoothing', (req, res) => {
       });
 
       lastDate = new Date(lastDate);
-      lastDate.setDate(lastDate.getDate() + 1);
+      lastDate.setHours(lastDate.getHours() + 1);
     }
 
     console.log('Historical data range:', {
@@ -432,10 +433,10 @@ app.post('/forecast/smoothing', (req, res) => {
 app.post('/forecast/kalman', (req, res) => {
   console.log('Received Kalman forecast request:', req.body);
   
-  const { days = 7, dataType = 'temperature_air' } = req.body;
+  const { hours = 24, dataType = 'temperature_air' } = req.body;
   
-  if (!days || days < 1 || days > 30) {
-    return res.status(400).json({ error: 'Days must be between 1 and 30' });
+  if (!hours || hours < 1 || hours > 168) {
+    return res.status(400).json({ error: 'Hours must be between 1 and 168' });
   }
 
   const validDataTypes = ['temperature_air', 'temperature_ground', 'wind', 'pressure', 'humidity', 'gaz'];
@@ -509,17 +510,23 @@ app.post('/forecast/kalman', (req, res) => {
         prevValue = measurement; // Use actual measurement for velocity calculation
       }
 
+      // Get the last historical record time and value
+      const lastHistoricalRecord = historical[historical.length - 1];
+      const lastHistoricalTime = new Date(lastHistoricalRecord.time);
+      const lastHistoricalValue = lastHistoricalRecord.value;
+
+      // Start forecasting from the next hour
       const forecast = [];
-      let lastDate = new Date(historical[historical.length - 1].time);
+      let lastDate = new Date(lastHistoricalTime);
       let lastValue = filteredData[filteredData.length - 1].value;
 
-      lastDate = new Date(lastDate);
-      lastDate.setDate(lastDate.getDate() + 1);
-      lastDate.setHours(0, 0, 0, 0);
+      // Round to the next hour
+      lastDate.setHours(lastDate.getHours() + 1);
+      lastDate.setMinutes(0, 0, 0);
 
       const dailyPatterns = [];
       for (let i = 1; i < historical.length; i++) {
-        const timeDiff = (new Date(historical[i].time) - new Date(historical[i-1].time)) / (1000 * 60 * 60 * 24);
+        const timeDiff = (new Date(historical[i].time) - new Date(historical[i-1].time)) / (1000 * 60 * 60);
         if (timeDiff > 0) {
           dailyPatterns.push((historical[i].value - historical[i-1].value) / timeDiff);
         }
@@ -528,18 +535,17 @@ app.post('/forecast/kalman', (req, res) => {
       const sortedPatterns = [...dailyPatterns].sort((a, b) => a - b);
       const medianChange = sortedPatterns[Math.floor(sortedPatterns.length / 2)] || 0;
 
-      const dampeningFactor = 0.95;
-      for (let i = 0; i < days; i++) {
+      const dampeningFactor = 0.98;
+      for (let i = 0; i < hours; i++) {
         const baseChange = medianChange * Math.pow(dampeningFactor, i);
         const randomFactor = 0.05; // Reduce random variation
         const variation = (Math.random() - 0.5) * Math.abs(medianChange) * randomFactor;
         
         lastValue += baseChange + variation;
 
-        const maxChange = 5; // Maximum allowed daily temperature change
-        const originalLastValue = filteredData[filteredData.length - 1].value;
-        if (Math.abs(lastValue - originalLastValue) > maxChange * (i + 1)) {
-          lastValue = originalLastValue + (Math.sign(lastValue - originalLastValue) * maxChange * (i + 1));
+        const maxChange = 5; // Maximum allowed hourly change
+        if (Math.abs(lastValue - lastHistoricalValue) > maxChange * (i + 1)) {
+          lastValue = lastHistoricalValue + (Math.sign(lastValue - lastHistoricalValue) * maxChange * (i + 1));
         }
 
         forecast.push({
@@ -547,13 +553,13 @@ app.post('/forecast/kalman', (req, res) => {
           value: parseFloat(lastValue.toFixed(2))
         });
 
-        // Move to next day
+        // Move to next hour
         lastDate = new Date(lastDate);
-        lastDate.setDate(lastDate.getDate() + 1);
+        lastDate.setHours(lastDate.getHours() + 1);
       }
 
       res.json({
-        historical: historical, // Return original historical data instead of filtered
+        historical: historical,
         forecast: forecast
       });
     } catch (error) {

@@ -951,8 +951,9 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="forecastDays">Days to Forecast:</label>
-                    <input type="number" id="forecastDays" value="7" min="1" max="30">
+                    <label for="forecastHours">Hours to Forecast:</label>
+                    <input type="number" id="forecastHours" value="24" min="1" max="168">
+                    <small style="display: block; color: #666; margin-top: 4px;">Enter hours (1-168)</small>
                 </div>
                 <div class="form-group">
                     <button onclick="generateForecast('${method}')">Generate Forecast</button>
@@ -969,7 +970,12 @@
 
         function generateForecast(method) {
             const dataType = document.getElementById('dataType').value;
-            const days = parseInt(document.getElementById('forecastDays').value);
+            const hours = parseInt(document.getElementById('forecastHours').value);
+
+            if (hours < 1 || hours > 168) {
+                alert('Please enter a number of hours between 1 and 168');
+                return;
+            }
 
             // Close the modal
             document.getElementById('editModal').style.display = "none";
@@ -982,7 +988,7 @@
                 },
                 body: JSON.stringify({
                     dataType,
-                    days
+                    hours
                 })
             })
             .then(response => {
@@ -1034,13 +1040,23 @@
                 };
             });
 
+            // Get the last historical record time
+            const lastHistoricalTime = historicalData.length > 0 
+                ? new Date(historicalData[historicalData.length - 1].x)
+                : new Date();
+
+            // Ensure forecast starts from the next hour after the last historical record
             const forecastData = data.forecast.map(d => {
                 const date = new Date(d.time.replace(' ', 'T'));
-                return {
-                    x: date,
-                    y: parseFloat(d.value)
-                };
-            });
+                // Only include forecast points that are after the last historical record
+                if (date > lastHistoricalTime) {
+                    return {
+                        x: date,
+                        y: parseFloat(d.value)
+                    };
+                }
+                return null;
+            }).filter(d => d !== null); // Remove any null values
 
             // Create the chart
             forecastChart = new Chart(ctx, {
@@ -1048,7 +1064,7 @@
                 data: {
                     datasets: [
                         {
-                            label: method === 'kalman' ? 'Historical Data' : 'Historical Data',
+                            label: 'Historical Data',
                             data: historicalData,
                             borderColor: 'rgb(54, 162, 235)',
                             backgroundColor: 'rgba(54, 162, 235, 0.1)',
@@ -1108,7 +1124,8 @@
                                     return new Date(context[0].parsed.x).toLocaleString();
                                 },
                                 label: function(context) {
-                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                    const isHistorical = context.datasetIndex === 0;
+                                    return `${isHistorical ? 'Historical' : method === 'kalman' ? 'Kalman' : 'Smoothing'}: ${context.parsed.y.toFixed(2)}`;
                                 }
                             }
                         }
