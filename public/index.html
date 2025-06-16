@@ -1040,23 +1040,13 @@
                 };
             });
 
-            // Get the last historical record time
-            const lastHistoricalTime = historicalData.length > 0 
-                ? new Date(historicalData[historicalData.length - 1].x)
-                : new Date();
-
-            // Ensure forecast starts from the next hour after the last historical record
             const forecastData = data.forecast.map(d => {
                 const date = new Date(d.time.replace(' ', 'T'));
-                // Only include forecast points that are after the last historical record
-                if (date > lastHistoricalTime) {
-                    return {
-                        x: date,
-                        y: parseFloat(d.value)
-                    };
-                }
-                return null;
-            }).filter(d => d !== null); // Remove any null values
+                return {
+                    x: date,
+                    y: parseFloat(d.value)
+                };
+            });
 
             // Create the chart
             forecastChart = new Chart(ctx, {

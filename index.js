@@ -361,22 +361,23 @@ app.post('/forecast/smoothing', (req, res) => {
       value: parseFloat(r[dataType])
     }));
 
-    const windowSize = Math.min(5, Math.floor(results.length / 4));
-    const smoothedData = [];
-    
-    for (let i = 0; i < results.length - windowSize + 1; i++) {
-      let sum = 0;
-      for (let j = 0; j < windowSize; j++) {
-        sum += parseFloat(results[i + j][dataType]);
-      }
-      const average = sum / windowSize;
-      smoothedData.push({
-        time: new Date(results[i + windowSize - 1].time).toISOString().slice(0, 19).replace('T', ' '),
-        value: parseFloat(average.toFixed(2))
-      });
+    // Analyze daily patterns
+    const hourlyPatterns = new Array(24).fill(0).map(() => []);
+    for (let i = 0; i < historical.length; i++) {
+      const hour = new Date(historical[i].time).getHours();
+      hourlyPatterns[hour].push(historical[i].value);
     }
 
-    const recentPoints = smoothedData.slice(-10);
+    // Calculate hourly averages and variations
+    const hourlyStats = hourlyPatterns.map(values => {
+      if (values.length === 0) return { avg: null, std: 0 };
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const std = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / values.length);
+      return { avg, std };
+    });
+
+    // Calculate recent trend
+    const recentPoints = historical.slice(-24); // Use last 24 hours for trend
     let weightedChange = 0;
     let weightSum = 0;
     
@@ -390,26 +391,41 @@ app.post('/forecast/smoothing', (req, res) => {
     const averageChange = weightSum !== 0 ? weightedChange / weightSum : 0;
 
     const forecast = [];
-    let lastValue = smoothedData[smoothedData.length - 1].value;
-    let lastDate = new Date(smoothedData[smoothedData.length - 1].time);
-    const dampeningFactor = 0.98; // Slightly higher dampening factor for hourly predictions
+    let lastValue = historical[historical.length - 1].value;
+    let lastDate = new Date(historical[historical.length - 1].time);
+    const dampeningFactor = 0.95; // Slightly stronger dampening
 
-    // Round to the nearest hour
-    lastDate = new Date(lastDate);
-    lastDate.setMinutes(0, 0, 0);
-    lastDate.setHours(lastDate.getHours() + 1);
-
-    for (let i = 0; i < hours; i++) {
-      const trend = averageChange * Math.pow(dampeningFactor, i);
-      lastValue += trend;
-      
+    if (historical.length > 0) {
+      // Додаємо першу точку forecast як точну копію останньої historical
+      forecast.length = 0;
       forecast.push({
-        time: lastDate.toISOString().slice(0, 19).replace('T', ' '),
-        value: parseFloat(lastValue.toFixed(2))
+        time: historical[historical.length - 1].time,
+        value: historical[historical.length - 1].value
       });
-
-      lastDate = new Date(lastDate);
-      lastDate.setHours(lastDate.getHours() + 1);
+      let lastDate = new Date(historical[historical.length - 1].time);
+      let lastValue = historical[historical.length - 1].value;
+      // Далі прогноз з кроком у годину
+      for (let i = 0; i < hours; i++) {
+        lastDate.setHours(lastDate.getHours() + 1);
+        const currentHour = lastDate.getHours();
+        const currentHourStat = hourlyStats[currentHour];
+        let hourlyAdjustment = 0;
+        if (currentHourStat && currentHourStat.avg !== null) {
+          const typicalValue = currentHourStat.avg;
+          const currentDeviation = lastValue - typicalValue;
+          hourlyAdjustment = -currentDeviation * 0.2;
+        }
+        const trend = averageChange * Math.pow(dampeningFactor, i);
+        lastValue += trend + hourlyAdjustment;
+        const nextTime = lastDate.toISOString().slice(0, 19).replace('T', ' ');
+        // Додаємо тільки якщо час більший за першу точку forecast
+        if (new Date(nextTime) > new Date(forecast[0].time)) {
+          forecast.push({
+            time: nextTime,
+            value: parseFloat(lastValue.toFixed(2))
+          });
+        }
+      }
     }
 
     console.log('Historical data range:', {
@@ -479,35 +495,70 @@ app.post('/forecast/kalman', (req, res) => {
         return res.status(404).json({ error: 'No valid historical data available after filtering' });
       }
 
-      let x = historical[0].value; // State estimate
-      let P = 0.1; // Lower initial uncertainty
-      const Q = 0.01; // Small process noise to allow for natural temperature changes
-      const R = 1.0; // Higher measurement noise to reduce over-reaction to outliers
+      // Analyze hourly patterns
+      const hourlyPatterns = new Array(24).fill(0).map(() => []);
+      for (let i = 0; i < historical.length; i++) {
+        const hour = new Date(historical[i].time).getHours();
+        hourlyPatterns[hour].push(historical[i].value);
+      }
+
+      // Calculate hourly statistics
+      const hourlyStats = hourlyPatterns.map(values => {
+        if (values.length === 0) return { avg: null, std: 0 };
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        const std = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / values.length);
+        return { avg, std };
+      });
+
+      // Initialize Kalman filter with better initial state
+      const initialHour = new Date(historical[0].time).getHours();
+      const hourStat = hourlyStats[initialHour];
+      let x = hourStat && hourStat.avg !== null ? hourStat.avg : historical[0].value; // State estimate
+      let P = 0.1; // Initial uncertainty
+      const Q = 0.01; // Process noise
+      const R = 1.0; // Measurement noise
 
       const filteredData = [];
       let prevValue = x;
       let velocity = 0;
+      let prevHour = initialHour;
 
+      // Enhanced Kalman filter with hourly pattern consideration
       for (let i = 0; i < historical.length; i++) {
         const measurement = historical[i].value;
+        const currentHour = new Date(historical[i].time).getHours();
         
+        // Calculate velocity considering hourly patterns
         if (i > 0) {
-          velocity = measurement - prevValue;
+          const hourDiff = (currentHour - prevHour + 24) % 24;
+          const expectedChange = hourDiff > 0 ? 
+            (hourlyStats[currentHour].avg - hourlyStats[prevHour].avg) / hourDiff : 0;
+          velocity = 0.7 * (measurement - prevValue) + 0.3 * expectedChange;
         }
 
-        const x_pred = x + velocity * 0.1; // Reduce the impact of velocity
+        // Prediction step with hourly pattern adjustment
+        const hourStat = hourlyStats[currentHour];
+        let x_pred = x + velocity * 0.1; // Base prediction
+        
+        if (hourStat && hourStat.avg !== null) {
+          // Blend prediction with typical value for this hour
+          x_pred = 0.8 * x_pred + 0.2 * hourStat.avg;
+        }
+
         const P_pred = P + Q;
 
-        const K = P_pred / (P_pred + R); // Kalman gain
+        // Update step
+        const K = P_pred / (P_pred + R);
         x = x_pred + K * (measurement - x_pred);
         P = (1 - K) * P_pred;
 
         filteredData.push({
           time: historical[i].time,
-          value: parseFloat((0.9 * measurement + 0.1 * x).toFixed(2)) // Blend actual and filtered values
+          value: parseFloat((0.9 * measurement + 0.1 * x).toFixed(2))
         });
 
-        prevValue = measurement; // Use actual measurement for velocity calculation
+        prevValue = measurement;
+        prevHour = currentHour;
       }
 
       // Get the last historical record time and value
@@ -520,42 +571,60 @@ app.post('/forecast/kalman', (req, res) => {
       let lastDate = new Date(lastHistoricalTime);
       let lastValue = filteredData[filteredData.length - 1].value;
 
-      // Round to the next hour
-      lastDate.setHours(lastDate.getHours() + 1);
-      lastDate.setMinutes(0, 0, 0);
-
-      const dailyPatterns = [];
+      // Calculate hourly changes for better trend estimation
+      const hourlyChanges = new Array(24).fill(0).map(() => []);
       for (let i = 1; i < historical.length; i++) {
-        const timeDiff = (new Date(historical[i].time) - new Date(historical[i-1].time)) / (1000 * 60 * 60);
-        if (timeDiff > 0) {
-          dailyPatterns.push((historical[i].value - historical[i-1].value) / timeDiff);
+        const prevTime = new Date(historical[i-1].time);
+        const currTime = new Date(historical[i].time);
+        const hourDiff = (currTime - prevTime) / (1000 * 60 * 60);
+        if (hourDiff > 0 && hourDiff <= 1) {
+          const hour = prevTime.getHours();
+          hourlyChanges[hour].push((historical[i].value - historical[i-1].value) / hourDiff);
         }
       }
-
-      const sortedPatterns = [...dailyPatterns].sort((a, b) => a - b);
-      const medianChange = sortedPatterns[Math.floor(sortedPatterns.length / 2)] || 0;
-
-      const dampeningFactor = 0.98;
-      for (let i = 0; i < hours; i++) {
-        const baseChange = medianChange * Math.pow(dampeningFactor, i);
-        const randomFactor = 0.05; // Reduce random variation
-        const variation = (Math.random() - 0.5) * Math.abs(medianChange) * randomFactor;
-        
-        lastValue += baseChange + variation;
-
-        const maxChange = 5; // Maximum allowed hourly change
-        if (Math.abs(lastValue - lastHistoricalValue) > maxChange * (i + 1)) {
-          lastValue = lastHistoricalValue + (Math.sign(lastValue - lastHistoricalValue) * maxChange * (i + 1));
-        }
-
+      // Calculate median changes for each hour
+      const hourlyMedianChanges = hourlyChanges.map(changes => {
+        if (changes.length === 0) return 0;
+        const sorted = [...changes].sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)];
+      });
+      const dampeningFactor = 0.95;
+      if (historical.length > 0) {
+        // Додаємо першу точку forecast як точну копію останньої historical
+        forecast.length = 0;
         forecast.push({
-          time: lastDate.toISOString().slice(0, 19).replace('T', ' '),
-          value: parseFloat(lastValue.toFixed(2))
+          time: historical[historical.length - 1].time,
+          value: historical[historical.length - 1].value
         });
-
-        // Move to next hour
-        lastDate = new Date(lastDate);
-        lastDate.setHours(lastDate.getHours() + 1);
+        let lastDate = new Date(historical[historical.length - 1].time);
+        let lastValue = historical[historical.length - 1].value;
+        // Далі прогноз з кроком у годину
+        for (let i = 0; i < hours; i++) {
+          lastDate.setHours(lastDate.getHours() + 1);
+          const currentHour = lastDate.getHours();
+          const hourStat = hourlyStats[currentHour];
+          const medianChange = hourlyMedianChanges[currentHour];
+          let change = medianChange * Math.pow(dampeningFactor, i);
+          if (hourStat && hourStat.avg !== null) {
+            const deviation = lastValue - hourStat.avg;
+            change -= deviation * 0.2;
+          }
+          const std = hourStat ? hourStat.std : 1;
+          const variation = (Math.random() - 0.5) * std * 0.1;
+          lastValue += change + variation;
+          const maxChange = Math.max(5, std * 2);
+          if (Math.abs(lastValue - historical[historical.length - 1].value) > maxChange * (i + 1)) {
+            lastValue = historical[historical.length - 1].value + (Math.sign(lastValue - historical[historical.length - 1].value) * maxChange * (i + 1));
+          }
+          const nextTime = lastDate.toISOString().slice(0, 19).replace('T', ' ');
+          // Додаємо тільки якщо час більший за першу точку forecast
+          if (new Date(nextTime) > new Date(forecast[0].time)) {
+            forecast.push({
+              time: nextTime,
+              value: parseFloat(lastValue.toFixed(2))
+            });
+          }
+        }
       }
 
       res.json({
